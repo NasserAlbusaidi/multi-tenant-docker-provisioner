@@ -6,11 +6,7 @@
   A robust boilerplate for creating on-demand, temporary, and isolated application environments using Docker and Traefik.
 </p>
 
-<p align="center">
-    <img src="https://img.shields.io/badge/status-active-success.svg" alt="Status">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
-    <img src="https://img.shields.io/github/last-commit/your-username/your-repo-name" alt="GitHub last commit">
-</p>
+
 
 ---
 
