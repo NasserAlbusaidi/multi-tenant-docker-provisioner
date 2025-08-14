@@ -1,8 +1,6 @@
 # Multi-Tenant Docker Provisioner
 
-<p align="center">
-  <img src="https://i.imgur.com/your-logo-or-diagram.png" alt="Project Logo or Architecture Diagram" width="600"/>
-</p>
+
 
 <p align="center">
   A robust boilerplate for creating on-demand, temporary, and isolated application environments using Docker and Traefik.
@@ -155,7 +153,7 @@ The script will output a JSON block with the instance URL and credentials.
 Destroying an Instance Manually
 Bash
 
-# Usage: ./teardown_instance.sh <instance-name>
+### Usage: ./teardown_instance.sh <instance-name>
 ./teardown_instance.sh customer-alpha
 Listing Active Instances
 Bash
@@ -166,16 +164,23 @@ This resets the 24/48-hour cleanup timer.
 
 Bash
 
-# Usage: ./extend_instance.sh <instance-name>
+### Usage: ./extend_instance.sh <instance-name>
 ./extend_instance.sh customer-alpha
-Appendix A: Application Gotchas
-Forcing HTTPS for Mixed Content Errors
+
+---
+
+
+## Appendix A: Application Gotchas
+
+Some applications may have specific requirements or configurations that need to be addressed.
+
+### Forcing HTTPS for Mixed Content Errors
 When using Traefik to handle SSL, your application may still generate insecure http:// links for assets (CSS, JS). This is a "Mixed Content" error. The most reliable solution is to force HTTPS at the application level.
 
-Code Change (Example for Laravel):
+### Code Change (Example for Laravel):
 Edit app/Providers/AppServiceProvider.php in your application's source code.
 
-PHP
+```PHP
 
 // app/Providers/AppServiceProvider.php
 use Illuminate\Support\Facades\URL;
@@ -186,10 +191,12 @@ public function boot(): void {
         URL::forceScheme('https');
     }
 }
+```
+
 Deployment Change:
 In app/setup_instance.sh, ensure you pass the FORCE_HTTPS environment variable to your docker run command.
 
-Bash
+```Bash
 
 docker run -d \
   # ... other flags
@@ -197,9 +204,11 @@ docker run -d \
   -e APP_URL="https://${INSTANCE_DOMAIN}" \
   # ... other flags
   "$APP_IMAGE"
+```
+
 Important: This requires rebuilding and pushing a new version of your application's Docker image.
 
-Appendix B: Application Dockerization
+## Appendix B: Application Dockerization
 The Laravel-Project/ directory in this repository provides a working template for containerizing a PHP/Laravel application. These files belong with your application's source code, not on the production server. Refer to the files in that directory for the complete code.
 
 Dockerfile: The main recipe for building your application image.
