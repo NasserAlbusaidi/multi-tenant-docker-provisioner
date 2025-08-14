@@ -1,0 +1,14 @@
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: traefik-proxy
+
+api:
+  dashboard: true
+  insecure: true # Accessible at http://<your_ip>:8080
