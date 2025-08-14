@@ -1,68 +1,79 @@
-# Project: Multi-Tenant Docker Provisioner
+# Multi-Tenant Docker Provisioner
 
-A fully automated, on-demand platform for creating and managing temporary, isolated demo instances of the Any Laravel application.
+<p align="center">
+  <img src="https://i.imgur.com/your-logo-or-diagram.png" alt="Project Logo or Architecture Diagram" width="600"/>
+</p>
 
-## Table of Contents
-1.  [Project Overview](#1-project-overview)
-2.  [Prerequisites](#2-prerequisites)
-3.  [Part I: Initial VM and Docker Setup](#3-part-i-initial-vm-and-docker-setup)
-4.  [Part II: Traefik Reverse Proxy Setup](#4-part-ii-traefik-reverse-proxy-setup)
-5.  [Part III: App Demo Provisioning Scripts](#5-part-iii-app-demo-provisioning-scripts)
-6.  [Part IV: Usage and Instance Management](#6-part-iv-usage-and-instance-management)
-7.  [Part V: Automation Setup](#7-part-v-automation-setup)
-8.  [Appendix A: Application Configuration & Gotchas](#appendix-a-application-configuration--gotchas)
-9.  [Appendix B: Application Docker Image Setup](#appendix-b-application-docker-image-setup)
+<p align="center">
+  A robust boilerplate for creating on-demand, temporary, and isolated application environments using Docker and Traefik.
+</p>
 
----
-
-## 1. Project Overview
-
-This system is designed to be triggered by an external system (like WHMCS) to provide potential customers with a personal demo environment.
-
-### Key Components
-*   **Docker:** All services (application, database) are containerized for isolation and easy management.
-*   **Traefik:** Acts as a reverse proxy, automatically routing traffic to new demo instances based on a unique subdomain (e.g., `instance-name.docker.frontech.om`).
-*   **Shell Scripts:** A suite of scripts handles the entire lifecycle of an instance: creation, teardown, and cleanup.
-*   **Cron:** A cron job automates the cleanup process, destroying instances after a predefined lifetime (e.g., 24/48 hours).
+<p align="center">
+    <img src="https://img.shields.io/badge/status-active-success.svg" alt="Status">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
+    <img src="https://img.shields.io/github/last-commit/your-username/your-repo-name" alt="GitHub last commit">
+</p>
 
 ---
 
-## 2. Prerequisites
+## 📋 Table of Contents
+
+1.  [Overview & Key Features](#-overview--key-features)
+2.  [Prerequisites](#-prerequisites)
+3.  [Installation Guide](#-installation-guide)
+4.  [Usage and Management](#-usage-and-management)
+5.  [Appendix A: Application Gotchas](#-appendix-a-application-gotchas)
+6.  [Appendix B: Application Dockerization](#-appendix-b-application-dockerization)
+
+---
+
+## 🌟 Overview & Key Features
+
+This system is designed to be triggered by an external system (like WHMCS) to provide potential customers with a personal demo environment for any containerized web application.
+
+-   **🐳 Containerized & Isolated:** All services (application, database) run in their own Docker containers.
+-   **🔁 Automated Routing:** Traefik acts as a reverse proxy, automatically routing traffic to new demo instances based on a unique subdomain (e.g., `instance-name.your-domain.com`).
+-   **⚙️ Full Lifecycle Management:** A suite of shell scripts handles the entire lifecycle of an instance: creation, teardown, and cleanup.
+-   **🕒 Ephemeral by Design:** A cron job automates the cleanup process, destroying instances after a predefined lifetime (e.g., 24/48 hours).
+
+---
+
+## ✅ Prerequisites
 
 Before starting, ensure you have the following:
 
 1.  **A Clean Virtual Machine:** A server running a modern Linux distribution. This guide assumes **Ubuntu 22.04 LTS**.
-2.  **A Domain Name:** You must own a domain name (e.g., `docker.frontech.om`) that you can manage DNS for.
-3.  **DNS Provider Access:** You need the ability to add `A` records.
-4.  **Application Docker Image:** A working Docker image of the application pushed to a container registry
+2.  **A Domain Name:** You must own a domain name (e.g., `demo.your-company.com`) that you can manage DNS for.
+3.  **DNS Provider Access:** You need the ability to add `A` records for the domain and for a wildcard subdomain.
+4.  **Application Docker Image:** A working Docker image of your application pushed to a container registry (e.g., Docker Hub).
 
 ---
 
-## 3. Part I: Initial VM and Docker Setup
+## 🚀 Installation Guide
 
-These steps prepare the server for our system.
+This guide walks through setting up the server from a blank slate.
+
+### Step 1: Install Docker and Docker Compose
+
+These steps prepare the server to run containers.
 
 1.  **Update the System:**
     ```bash
     sudo apt-get update && sudo apt-get upgrade -y
     ```
-
 2.  **Install Docker Engine & Compose:**
     ```bash
     # Install prerequisite packages
     sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-    # Add Docker's official GPG key
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-
-    # Set up the stable repository
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
+    # Add Docker's official GPG key and repository
+    curl -fsSL [https://download.docker.com/linux/ubuntu/gpg](https://download.docker.com/linux/ubuntu/gpg) | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
     # Install Docker Engine and Compose
     sudo apt-get update
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
     ```
-
 3.  **Add Your User to the `docker` Group (Optional but Recommended):**
     This allows you to run `docker` commands without `sudo`.
     ```bash
@@ -71,109 +82,70 @@ These steps prepare the server for our system.
     newgrp docker
     ```
 
----
-
-## 4. Part II: Traefik Reverse Proxy Setup
+### Step 2: Deploy Traefik Reverse Proxy
 
 This is a one-time setup for the "traffic cop" of our system.
 
 1.  **Set Up DNS Records:**
     In your DNS provider, create two `A` records pointing to your VM's public IP address:
-    *   **Record 1 (Main Domain):** Host: `docker.frontech.om`, Value: `[Your VM's IP]`
-    *   **Record 2 (Wildcard):** Host: `*`, Value: `[Your VM's IP]`
+    -   **Record 1 (Main Domain):** Host: `your-domain.com`, Value: `[Your VM's IP]`
+    -   **Record 2 (Wildcard):** Host: `*`, Value: `[Your VM's IP]`
 
-2.  **Create Traefik Configuration Files:**
-    Create a directory for Traefik, e.g., `/opt/traefik`, and create the following three files within it.
-    
-    **`docker-compose.yml`**
-    ```yaml
-    version: '3.8'
+2.  **Create Traefik Files:**
+    Create a directory (`/opt/traefik`) and place the configuration files from the `traefik/` directory of this repository inside it.
 
-    services:
-      traefik:
-        image: "traefik:latest"
-        container_name: "traefik-proxy-controller"
-        restart: unless-stopped
-        ports:
-          - "80:80"
-          - "443:443"
-          - "8080:8080" # Dashboard
-        volumes:
-          - "/var/run/docker.sock:/var/run/docker.sock:ro"
-          - "./traefik.yml:/traefik.yml:ro"
-          - "./acme.json:/acme.json"
-        networks:
-          - traefik-proxy
-
-    networks:
-      traefik-proxy:
-        name: traefik-proxy
-    ```
-
-    **`traefik.yml`** (Static Configuration)
-    ```yaml
-    entryPoints:
-      web:
-        address: ":80"
-      websecure:
-        address: ":443"
-
-    providers:
-      docker:
-        exposedByDefault: false
-        network: traefik-proxy
-
-    api:
-      dashboard: true
-      insecure: true # Accessible at http://<your_ip>:8080
-    ```
-
-    **`acme.json`** (For SSL certificates, must exist but can be empty)
-    ```bash
-    touch acme.json
-    chmod 600 acme.json # Set correct permissions
-    ```
+    > **Note:** Ensure the `acme.json` file has strict permissions.
+    > ```bash
+    > sudo chmod 600 /opt/traefik/acme.json
+    > ```
 
 3.  **Start Traefik:**
-    From within the `/opt/traefik` directory, run:
     ```bash
+    cd /opt/traefik
     docker-compose up -d
     ```
 
 4.  **Verify Traefik:**
-    *   Check that the container is running: `docker ps`
-    *   Access the dashboard in your browser: `http://<Your_VM_IP>:8080`
+    -   Check that the container is running: `docker ps`
+    -   Access the dashboard in your browser: `http://<Your_VM_IP>:8080`
 
----
+### Step 3: Deploy the Provisioning Scripts
 
-## 5. Part III: App Demo Provisioning Scripts
-
-These are the core scripts that manage the instance lifecycle. The recommended location is `/opt/[app-name]/`.
-
-1.  **Create Script Directory and Files:**
-    ```bash
-    mkdir /opt/[app-name]
-    cd /opt/[app-name]
-    ```
-    Create the following files and paste the correct code into them:
-    *   `setup_instance.sh`
-    *   `teardown_instance.sh`
-    *   `cleanup_expired_instances.sh`
-    *   `list_instances.sh` (optional helper)
-    *   `extend_instance.sh` (optional helper)
+1.  **Copy Scripts to Server:**
+    Copy the contents of the `app/` directory from this repository to `/opt/app-provisioner` on your server.
 
 2.  **Make Scripts Executable:**
     ```bash
+    cd /opt/app-provisioner
     chmod +x *.sh
+    ```
+
+3.  **Create Tracking Directory:**
+    ```bash
+    mkdir -p /opt/app-provisioner/instance_tracker
+    ```
+
+### Step 4: Automate Cleanup with Cron
+
+1.  **Open the Crontab Editor:**
+    ```bash
+    crontab -e
+    ```
+
+2.  **Add the Cleanup Job:**
+    Add this line to the bottom of the file. This will run the cleanup script every hour and log its output.
+    ```crontab
+    0 * * * * /opt/app-provisioner/cleanup_expired_instances.sh >> /var/log/app_provisioner_cleanup.log 2>&1
     ```
 
 ---
 
-## 6. Part IV: Usage and Instance Management
+## 🛠️ Usage and Management
+
+All commands should be run from `/opt/app-provisioner` on the server.
 
 ### Creating an Instance
-To create a new demo instance, run the setup script with a unique instance name.
+
 ```bash
 # Usage: ./setup_instance.sh <instance-name>
-cd /opt/[app-name]
 ./setup_instance.sh customer-alpha
