@@ -149,3 +149,63 @@ All commands should be run from `/opt/app-provisioner` on the server.
 ```bash
 # Usage: ./setup_instance.sh <instance-name>
 ./setup_instance.sh customer-alpha
+```
+The script will output a JSON block with the instance URL and credentials.
+
+Destroying an Instance Manually
+Bash
+
+# Usage: ./teardown_instance.sh <instance-name>
+./teardown_instance.sh customer-alpha
+Listing Active Instances
+Bash
+
+./list_instances.sh
+Extending an Instance's Lifetime
+This resets the 24/48-hour cleanup timer.
+
+Bash
+
+# Usage: ./extend_instance.sh <instance-name>
+./extend_instance.sh customer-alpha
+Appendix A: Application Gotchas
+Forcing HTTPS for Mixed Content Errors
+When using Traefik to handle SSL, your application may still generate insecure http:// links for assets (CSS, JS). This is a "Mixed Content" error. The most reliable solution is to force HTTPS at the application level.
+
+Code Change (Example for Laravel):
+Edit app/Providers/AppServiceProvider.php in your application's source code.
+
+PHP
+
+// app/Providers/AppServiceProvider.php
+use Illuminate\Support\Facades\URL;
+
+public function boot(): void {
+    // Force HTTPS if the FORCE_HTTPS env var is true
+    if (env('FORCE_HTTPS', false)) {
+        URL::forceScheme('https');
+    }
+}
+Deployment Change:
+In app/setup_instance.sh, ensure you pass the FORCE_HTTPS environment variable to your docker run command.
+
+Bash
+
+docker run -d \
+  # ... other flags
+  -e "FORCE_HTTPS=true" \
+  -e APP_URL="https://${INSTANCE_DOMAIN}" \
+  # ... other flags
+  "$APP_IMAGE"
+Important: This requires rebuilding and pushing a new version of your application's Docker image.
+
+Appendix B: Application Dockerization
+The Laravel-Project/ directory in this repository provides a working template for containerizing a PHP/Laravel application. These files belong with your application's source code, not on the production server. Refer to the files in that directory for the complete code.
+
+Dockerfile: The main recipe for building your application image.
+
+docker/vhost.conf: Apache virtual host configuration.
+
+docker/supervisord.conf: Supervisor process manager configuration.
+
+docker/entrypoint.sh: A critical runtime script that runs every time a container starts.
